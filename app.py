@@ -1,14 +1,15 @@
-import os
-import streamlit as st
+from flask import Flask, render_template, request, jsonify
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
+import os
+
+app = Flask(__name__)
 
 # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
 openai_api_key = "clé"
 if not openai_api_key:
-    st.error("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
-    st.stop()
+    raise ValueError("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
 
 # 📥 Charger la base de données vectorielle FAISS
 def create_retriever(vector_db_path):
@@ -17,7 +18,7 @@ def create_retriever(vector_db_path):
         faiss_db = FAISS.load_local(vector_db_path, embeddings, allow_dangerous_deserialization=True)
         return faiss_db.as_retriever()
     except ValueError as e:
-        st.error(f"❌ Erreur lors du chargement de la base FAISS : {e}")
+        print(f"❌ Erreur lors du chargement de la base FAISS : {e}")
         return None
 
 # 🤖 Création du chatbot
@@ -37,37 +38,30 @@ class Chatbot:
     def ask(self, question):
         if not self.qa:
             return "⚠️ Erreur de chargement du modèle."
-
         # 🔎 Recherche dans FAISS
         specific_response = self.qa.run(question)
-
         # 📌 Si la réponse est vide ou peu pertinente, utiliser GPT-3.5
         if not specific_response.strip():
             return self.llm.predict(question)
-
         return specific_response.strip()
 
-# 🎨 Interface Streamlit
-st.title("🤖 Chatbot sur la Naturalisation Française 🇫🇷")
-
+# 🎨 Interface Flask
 vector_db_path = "C:\\Users\\Sysai\\PycharmProjects\\LLM_OPs\\vectorstore"  # Adapte ce chemin
 chatbot = Chatbot(vector_db_path)
 
-# 📌 Système de mémoire pour sauvegarder l'historique des échanges
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+chat_history = []
 
-# 🔎 Champ de saisie utilisateur
-question = st.text_input("✏️ Posez votre question :")
+@app.route('/')
+def home():
+    return render_template('index.html', chat_history=chat_history)
 
-if st.button("🗣️ Envoyer"):
-    if question:
-        response = chatbot.ask(question)
-        st.session_state.chat_history.append((question, response))  # Ajout au chat
+@app.route('/ask', methods=['POST'])
+def ask():
+    global chat_history
+    question = request.form['question']
+    response = chatbot.ask(question)
+    chat_history.append((question, response))
+    return jsonify({"response": response, "chat_history": chat_history})
 
-# 📜 Affichage de l'historique
-st.subheader("💬 Historique de la conversation")
-for q, r in st.session_state.chat_history:
-    st.write(f"**🧑‍💼 Vous :** {q}")
-    st.write(f"**🤖 Chatbot :** {r}")
-    st.write("---")
+if __name__ == '__main__':
+    app.run(debug=True)
