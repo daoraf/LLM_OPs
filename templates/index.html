@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot sur la Naturalisation Française</title>
+</head>
+<body>
+    <h1>🤖 Chatbot sur la Naturalisation Française 🇫🇷</h1>
+    <form id="chat-form">
+        <input type="text" id="question" placeholder="✏️ Posez votre question :" required>
+        <button type="submit">🗣️ Envoyer</button>
+    </form>
+    <h2>💬 Historique de la conversation</h2>
+    <div id="chat-history">
+        {% for question, response in chat_history %}
+            <p><strong>🧑‍💼 Vous :</strong> {{ question }}</p>
+            <p><strong>🤖 Chatbot :</strong> {{ response }}</p>
+            <hr>
+        {% endfor %}
+    </div>
+
+    <script>
+        document.getElementById('chat-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const question = document.getElementById('question').value;
+            fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `question=${encodeURIComponent(question)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const chatHistoryDiv = document.getElementById('chat-history');
+                chatHistoryDiv.innerHTML = data.chat_history.map(([q, r]) =>
+                    `<p><strong>🧑‍💼 Vous :</strong> ${q}</p><p><strong>🤖 Chatbot :</strong> ${r}</p><hr>`
+                ).join('');
+            });
+        });
+    </script>
+</body>
+</html>
