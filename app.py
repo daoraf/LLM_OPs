@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
 
-openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_key = "cle"
 
 if not openai_api_key:
     raise ValueError("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
