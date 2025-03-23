@@ -5,7 +5,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 
 # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
-openai_api_key = "clé"
+openai_api_key = "clé1"
 if not openai_api_key:
     st.error("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
     st.stop()
