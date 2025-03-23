@@ -7,7 +7,9 @@ import os
 app = Flask(__name__)
 
 # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
-openai_api_key = os.environ["OPENAI_API_KEY"] = "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"
+
+openai_api_key = "clé"
+
 if not openai_api_key:
     raise ValueError("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
 
@@ -46,7 +48,9 @@ class Chatbot:
         return specific_response.strip()
 
 # 🎨 Interface Flask
+
 vector_db_path = "/app/vectorstore"  # Adapte ce chemin
+
 chatbot = Chatbot(vector_db_path)
 
 chat_history = []
@@ -65,3 +69,4 @@ def ask():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8085, debug=True)
+

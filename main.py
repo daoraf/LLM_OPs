@@ -5,7 +5,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 
 # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
-openai_api_key = os.environ["OPENAI_API_KEY"] =  "cle"
+openai_api_key = "clé"
 if not openai_api_key:
     st.error("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
     st.stop()
@@ -50,7 +50,7 @@ class Chatbot:
 # 🎨 Interface Streamlit
 st.title("🤖 Chatbot sur la Naturalisation Française 🇫🇷")
 
-vector_db_path = "C:\\Users\\daora\\LLMOPS\\vectorstore"  # Adapte ce chemin
+vector_db_path = "C:\\Users\\Sysai\\PycharmProjects\\LLM_OPs\\vectorstore"  # Adapte ce chemin
 chatbot = Chatbot(vector_db_path)
 
 # 📌 Système de mémoire pour sauvegarder l'historique des échanges
