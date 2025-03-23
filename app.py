@@ -5,30 +5,26 @@ from langchain.chains import RetrievalQA
 from dotenv import load_dotenv
 import os
 
-
 app = Flask(__name__)
 
-# 🔐 Charger la clé API OpenAI depuis les variables d’environnement
-
+# Charger la clé API OpenAI depuis les variables d’environnement
 load_dotenv()  # Charge les variables d'environnement du fichier .env
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-
-print(openai_api_key)
 if not openai_api_key:
-    raise ValueError("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
+    raise ValueError("Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
 
-# 📥 Charger la base de données vectorielle FAISS
+# Charger la base de données vectorielle FAISS
 def create_retriever(vector_db_path):
     embeddings = OpenAIEmbeddings()
     try:
         faiss_db = FAISS.load_local(vector_db_path, embeddings, allow_dangerous_deserialization=True)
         return faiss_db.as_retriever()
     except ValueError as e:
-        print(f"❌ Erreur lors du chargement de la base FAISS : {e}")
+        print(f"Erreur lors du chargement de la base FAISS : {e}")
         return None
 
-# 🤖 Création du chatbot
+# Création du chatbot
 def create_chatbot(vector_db_path):
     retriever = create_retriever(vector_db_path)
     if retriever is None:
@@ -37,25 +33,21 @@ def create_chatbot(vector_db_path):
     retrieval_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
     return retrieval_chain, llm
 
-# 🎭 Classe chatbot
+# Classe chatbot
 class Chatbot:
     def __init__(self, vector_db_path):
         self.qa, self.llm = create_chatbot(vector_db_path)
 
     def ask(self, question):
         if not self.qa:
-            return "⚠️ Erreur de chargement du modèle."
-        # 🔎 Recherche dans FAISS
+            return "Erreur de chargement du modèle."
         specific_response = self.qa.run(question)
-        # 📌 Si la réponse est vide ou peu pertinente, utiliser GPT-3.5
         if not specific_response.strip():
             return self.llm.predict(question)
         return specific_response.strip()
 
-# 🎨 Interface Flask
-
-vector_db_path = "/app/vectorstore"  # Adapte ce chemin
-
+# Interface Flask
+vector_db_path = "/app/vectorstore"  # Adaptez ce chemin si nécessaire
 chatbot = Chatbot(vector_db_path)
 
 chat_history = []
@@ -74,4 +66,3 @@ def ask():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8085, debug=True)
-
