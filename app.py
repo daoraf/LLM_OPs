@@ -18,7 +18,6 @@ if not openai_api_key:
         "Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement."
     )
 
-
 # Charger la base de données vectorielle FAISS
 def create_retriever(vector_db_path):
     embeddings = OpenAIEmbeddings()
@@ -30,7 +29,6 @@ def create_retriever(vector_db_path):
     except ValueError as e:
         print(f"Erreur lors du chargement de la base FAISS : {e}")
         return None
-
 
 # Création du chatbot
 def create_chatbot(vector_db_path):
@@ -57,39 +55,36 @@ def create_chatbot(vector_db_path):
 
     return retrieval_chain, llm
 
-
 # Classe chatbot
 class Chatbot:
     def __init__(self, vector_db_path):
         self.qa, self.llm = create_chatbot(vector_db_path)
+        self.chat_history = []
 
     def ask(self, question):
         if not self.qa:
             return "Erreur de chargement du modèle."
         response = self.qa.invoke({"input": question})
-        return response.get("answer", "Je ne sais pas.").strip()
+        answer = response.get("answer", "Je ne sais pas.").strip()
+        self.chat_history.append((question, answer))
+        return answer
 
+    def get_chat_history(self):
+        return self.chat_history
 
 # Interface Flask
 vector_db_path = "/app/vectorstore"  # Adaptez ce chemin si nécessaire
 chatbot = Chatbot(vector_db_path)
 
-chat_history = []
-
-
 @app.route("/")
 def home():
-    return render_template("index.html", chat_history=chat_history)
-
+    return render_template("index.html", chat_history=chatbot.get_chat_history())
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    global chat_history
     question = request.form["question"]
     response = chatbot.ask(question)
-    chat_history.append((question, response))
-    return jsonify({"response": response, "chat_history": chat_history})
-
+    return jsonify({"response": response, "chat_history": chatbot.get_chat_history()})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8085, debug=True)
