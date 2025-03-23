@@ -11,18 +11,24 @@ load_dotenv()  # Charge les variables d'environnement du fichier .env
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
 if not openai_api_key:
-    st.error("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
+    st.error(
+        "🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement."
+    )
     st.stop()
+
 
 # 📥 Charger la base de données vectorielle FAISS
 def create_retriever(vector_db_path):
     embeddings = OpenAIEmbeddings()
     try:
-        faiss_db = FAISS.load_local(vector_db_path, embeddings, allow_dangerous_deserialization=True)
+        faiss_db = FAISS.load_local(
+            vector_db_path, embeddings, allow_dangerous_deserialization=True
+        )
         return faiss_db.as_retriever()
     except ValueError as e:
         st.error(f"❌ Erreur lors du chargement de la base FAISS : {e}")
         return None
+
 
 # 🤖 Création du chatbot
 def create_chatbot(vector_db_path):
@@ -30,8 +36,11 @@ def create_chatbot(vector_db_path):
     if retriever is None:
         return None, None
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7)
-    retrieval_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
+    retrieval_chain = RetrievalQA.from_chain_type(
+        llm=llm, chain_type="stuff", retriever=retriever
+    )
     return retrieval_chain, llm
+
 
 # 🎭 Classe chatbot
 class Chatbot:
@@ -50,6 +59,7 @@ class Chatbot:
             return self.llm.predict(question)
 
         return specific_response.strip()
+
 
 # 🎨 Interface Streamlit
 st.title("🤖 Chatbot sur la Naturalisation Française 🇫🇷")
