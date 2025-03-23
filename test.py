@@ -14,7 +14,7 @@ class FlaskAppTests(unittest.TestCase):
         self.app = app.test_client()
         self.app.testing = True
 
-        # Mock the environment variable for OpenAI API key
+        # Mock the environment variable for OpenAI API key0000
         openai_api_key = os.environ["OPENAI_API_KEY"] = "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"
 
         if not openai_api_key:
