@@ -54,7 +54,7 @@ class Chatbot:
 
 # 🎨 Interface Flask
 
-vector_db_path = "/app/vectorstore"  # Adapte ce chemin
+vector_db_path = "C:\\Users\\daora\\IA_Naturalisation\\vectorstore"  # Adapte ce chemin
 
 chatbot = Chatbot(vector_db_path)
 

@@ -6,6 +6,8 @@ import os
 
 # Importer les modules nécessaires de votre application
 from app import app, Chatbot
+from dotenv import load_dotenv
+
 
 class FlaskAppTests(unittest.TestCase):
 
@@ -15,7 +17,10 @@ class FlaskAppTests(unittest.TestCase):
         self.app.testing = True
 
         # Mock the environment variable for OpenAI API key0000
-        openai_api_key = os.environ["OPENAI_API_KEY"] = "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"
+        # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
+        load_dotenv()  # Charge les variables d'environnement du fichier .env
+
+        openai_api_key = os.getenv("OPENAI_API_KEY")
 
         if not openai_api_key:
             raise ValueError("Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")

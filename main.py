@@ -3,9 +3,13 @@ import streamlit as st
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
+from dotenv import load_dotenv
 
 # 🔐 Charger la clé API OpenAI depuis les variables d’environnement
-openai_api_key = "cle"
+load_dotenv()  # Charge les variables d'environnement du fichier .env
+
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
 if not openai_api_key:
     st.error("🔑 Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement.")
     st.stop()
