@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: eu-west-3               # set this to your preferred AWS region, e.g. us-west-1
-  ECR_REPOSITORY: daoraf/llmops          # set this to your Amazon ECR repository name
+  ECR_REPOSITORY: llmops          # set this to your Amazon ECR repository name
   ECS_SERVICE: llmopsService                 # set this to your Amazon ECS service name
   ECS_CLUSTER: llmopsCluster                 # set this to your Amazon ECS cluster name
   ECS_TASK_DEFINITION: llmopsLLM # set this to the path to your Amazon ECS task definition
