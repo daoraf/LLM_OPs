@@ -1,63 +1,62 @@
+import os
 import chainlit as cl
-import openai
+from dotenv import load_dotenv
+import openai  # ✅ nouvelle API
 
-openai.api_key = "VOTRE_CLE_API_OPENAI"
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")  # ✅ instanciation correcte
 
 conversation_history = [
     {
         "role": "system",
         "content": (
             "Tu es un expert en naturalisation française. "
-            "Tes réponses sont pédagogiques, fiables, à jour et reposent sur les textes officiels du gouvernement."
+            "Tes réponses sont claires, bienveillantes et basées sur la loi."
         )
     }
 ]
 
-quick_questions = [
-    "Quelles sont les conditions pour être naturalisé ?",
-    "Quels documents dois-je fournir ?",
-    "Combien de temps prend la procédure ?",
-    "Puis-je faire une demande si je suis étudiant ?",
-    "Comment se passe l'entretien de naturalisation ?"
-]
-
 @cl.on_chat_start
 async def start():
-    await cl.Message(
-        content="👋 Bonjour et bienvenue !\n\nJe suis un assistant intelligent spécialisé dans la naturalisation française. Posez-moi une question, ou choisissez un sujet ci-dessous 👇",
-        actions=[
-            cl.Action(name=f"q{i}", value=q, label=q, payload={"question": q})
-            for i, q in enumerate(quick_questions)
-        ]
-    ).send()
+    await cl.Message(content="🇫🇷 Bonjour ! Je suis votre assistant IA pour la naturalisation française. Tapez `guide` pour un parcours étape par étape, ou posez votre question librement.").send()
 
 @cl.on_message
 async def handle_message(message: cl.Message):
     global conversation_history
 
-    user_input = message.content
+    user_input = message.content.strip().lower()
+
+    if user_input == "guide":
+        await launch_step_by_step_guide()
+        return
+
     conversation_history.append({"role": "user", "content": user_input})
 
     try:
-        response = await openai.ChatCompletion.acreate(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=conversation_history,
             temperature=0.4,
             max_tokens=500
         )
-
-        answer = response["choices"][0]["message"]["content"]
+        answer = response.choices[0].message["content"]  # ✅ bonne syntaxe
         conversation_history.append({"role": "assistant", "content": answer})
-
         await cl.Message(content=answer).send()
-
-        await cl.Message(
-            content="Souhaitez-vous explorer un autre sujet ?",
-            actions=[
-                cl.Action(name=f"q{i}", value=q, label=q, payload={"question": q})
-                for i, q in enumerate(quick_questions)
-            ]
-        ).send()
-
     except Exception as e:
-        await cl.Message(content=f"❌ Une erreur est survenue : {e}").send()
+        await cl.Message(content=f"❌ Erreur : {e}").send()
+
+async def launch_step_by_step_guide():
+    steps = [
+        "📍 **Étape 1 :** Avez-vous plus de 18 ans et résidez-vous en France depuis au moins 5 ans ?",
+        "📍 **Étape 2 :** Votre casier judiciaire est-il compatible avec la naturalisation ?",
+        "📍 **Étape 3 :** Avez-vous une preuve de niveau de langue B1 (ex. TCF, DELF) ?",
+        "📍 **Étape 4 :** Disposez-vous des documents administratifs nécessaires (titre de séjour, acte de naissance, justificatif de domicile...) ?",
+        "📍 **Étape 5 :** Savez-vous comment et où déposer votre demande (en ligne ou en préfecture) ?"
+    ]
+
+    await cl.Message(content="🧭 **Guide étape par étape de la naturalisation**").send()
+
+    for step in steps:
+        await cl.Message(content=step).send()
+
+    await cl.Message(content="✅ Si vous avez validé toutes ces étapes, tapez `checklist` pour voir les documents à préparer.").send()

@@ -1,6 +1,4 @@
 [project]
-name = "Assistant Naturalisation Française"
-description = "Un assistant IA dédié aux démarches de naturalisation en France"
 enable_telemetry = true
 user_env = []
 session_timeout = 3600
@@ -9,7 +7,7 @@ cache = false
 allow_origins = ["*"]
 
 [features]
-unsafe_allow_html = false
+unsafe_allow_html = true
 latex = false
 user_message_autoscroll = true
 auto_tag_thread = true
@@ -32,33 +30,40 @@ enabled = true
 allowed_executables = [ "npx", "uvx" ]
 
 [UI]
-name = "Assistant Naturalisation Française"
-show_header = true
-theme = "light"
+name = "Assistant"
 cot = "full"
 
-[layout]
-hide_cot = true
+[[UI.header_links]]
+name = "Service Public"
+icon_url = "https://th.bing.com/th/id/OIP.cvNiuH4FZsiR6V_koNaG9QHaDv?w=343&h=176&c=7&r=0&o=5&pid=1.7"
+url = "https://www.service-public.fr/particuliers/vosdroits/N111"
+
 
 [branding]
 banner = """
 <div style='
-    background: linear-gradient(to right, #0055A4, white, #EF4135);
-    height: 65px;
+    background: white;
+    border-bottom: 4px solid #0055A4;
+    padding: 10px 20px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-family: "Segoe UI", sans-serif;
+    justify-content: space-between;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
     font-weight: 600;
-    font-size: 20px;
-    color: #222;
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+    color: #001F3F;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 '>
-    🤖 Assistant Naturalisation Française 🇫🇷
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="https://upload.wikimedia.org/wikipedia/fr/thumb/e/e2/Logo_Minist%C3%A8re_de_l%27Int%C3%A9rieur_%28France%29.svg/1200px-Logo_Minist%C3%A8re_de_l%27Int%C3%A9rieur_%28France%29.svg.png" alt="Ministère de l'intérieur" height="48" />
+        <span>Assistant Naturalisation — Ministère de l'Intérieur 🇫🇷</span>
+    </div>
 </div>
 """
 
+
+[server]
+port = 8500
+
 [meta]
 generated_by = "2.4.400"
-[server]
-port = 8000
