@@ -1,0 +1,64 @@
+[project]
+name = "Assistant Naturalisation Française"
+description = "Un assistant IA dédié aux démarches de naturalisation en France"
+enable_telemetry = true
+user_env = []
+session_timeout = 3600
+user_session_timeout = 1296000
+cache = false
+allow_origins = ["*"]
+
+[features]
+unsafe_allow_html = false
+latex = false
+user_message_autoscroll = true
+auto_tag_thread = true
+edit_message = true
+
+[features.spontaneous_file_upload]
+enabled = true
+accept = ["*/*"]
+max_files = 20
+max_size_mb = 500
+
+[features.audio]
+sample_rate = 24000
+
+[features.mcp.sse]
+enabled = true
+
+[features.mcp.stdio]
+enabled = true
+allowed_executables = [ "npx", "uvx" ]
+
+[UI]
+name = "Assistant Naturalisation Française"
+show_header = true
+theme = "light"
+cot = "full"
+
+[layout]
+hide_cot = true
+
+[branding]
+banner = """
+<div style='
+    background: linear-gradient(to right, #0055A4, white, #EF4135);
+    height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    color: #222;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+'>
+    🤖 Assistant Naturalisation Française 🇫🇷
+</div>
+"""
+
+[meta]
+generated_by = "2.4.400"
+[server]
+port = 8000

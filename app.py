@@ -1,90 +1,63 @@
-from flask import Flask, render_template, request, jsonify
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
-from dotenv import load_dotenv
-import os
+import chainlit as cl
+import openai
 
-app = Flask(__name__)
+openai.api_key = "VOTRE_CLE_API_OPENAI"
 
-# Charger la clé API OpenAI depuis les variables d’environnement
-load_dotenv()  # Charge les variables d'environnement du fichier .env
-
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    raise ValueError(
-        "Clé API OpenAI manquante ! Définissez OPENAI_API_KEY dans vos variables d’environnement."
-    )
-
-# Charger la base de données vectorielle FAISS
-def create_retriever(vector_db_path):
-    embeddings = OpenAIEmbeddings()
-    try:
-        faiss_db = FAISS.load_local(
-            vector_db_path, embeddings, allow_dangerous_deserialization=True
+conversation_history = [
+    {
+        "role": "system",
+        "content": (
+            "Tu es un expert en naturalisation française. "
+            "Tes réponses sont pédagogiques, fiables, à jour et reposent sur les textes officiels du gouvernement."
         )
-        return faiss_db.as_retriever()
-    except ValueError as e:
-        print(f"Erreur lors du chargement de la base FAISS : {e}")
-        return None
+    }
+]
 
-# Création du chatbot
-def create_chatbot(vector_db_path):
-    retriever = create_retriever(vector_db_path)
-    if retriever is None:
-        return None, None
+quick_questions = [
+    "Quelles sont les conditions pour être naturalisé ?",
+    "Quels documents dois-je fournir ?",
+    "Combien de temps prend la procédure ?",
+    "Puis-je faire une demande si je suis étudiant ?",
+    "Comment se passe l'entretien de naturalisation ?"
+]
 
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7)
+@cl.on_chat_start
+async def start():
+    await cl.Message(
+        content="👋 Bonjour et bienvenue !\n\nJe suis un assistant intelligent spécialisé dans la naturalisation française. Posez-moi une question, ou choisissez un sujet ci-dessous 👇",
+        actions=[
+            cl.Action(name=f"q{i}", value=q, label=q, payload={"question": q})
+            for i, q in enumerate(quick_questions)
+        ]
+    ).send()
 
-    system_prompt = (
-        "Utilisez le contexte fourni pour répondre à la question. "
-        "Si vous ne connaissez pas la réponse, dites que vous ne savez pas. "
-        "Utilisez un maximum de trois phrases et soyez concis. "
-        "Contexte : {context}"
-    )
+@cl.on_message
+async def handle_message(message: cl.Message):
+    global conversation_history
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{input}"),
-    ])
+    user_input = message.content
+    conversation_history.append({"role": "user", "content": user_input})
 
-    question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    retrieval_chain = create_retrieval_chain(retriever, question_answer_chain)
+    try:
+        response = await openai.ChatCompletion.acreate(
+            model="gpt-4",
+            messages=conversation_history,
+            temperature=0.4,
+            max_tokens=500
+        )
 
-    return retrieval_chain, llm
+        answer = response["choices"][0]["message"]["content"]
+        conversation_history.append({"role": "assistant", "content": answer})
 
-# Classe chatbot
-class Chatbot:
-    def __init__(self, vector_db_path):
-        self.qa, self.llm = create_chatbot(vector_db_path)
-        self.chat_history = []
+        await cl.Message(content=answer).send()
 
-    def ask(self, question):
-        if not self.qa:
-            return "Erreur de chargement du modèle."
-        response = self.qa.invoke({"input": question})
-        answer = response.get("answer", "Je ne sais pas.").strip()
-        self.chat_history.append((question, answer))
-        return answer
+        await cl.Message(
+            content="Souhaitez-vous explorer un autre sujet ?",
+            actions=[
+                cl.Action(name=f"q{i}", value=q, label=q, payload={"question": q})
+                for i, q in enumerate(quick_questions)
+            ]
+        ).send()
 
-    def get_chat_history(self):
-        return self.chat_history
-
-# Interface Flask
-vector_db_path = "/app/vectorstore"  # Adaptez ce chemin si nécessaire
-chatbot = Chatbot(vector_db_path)
-
-@app.route("/")
-def home():
-    return render_template("index.html", chat_history=chatbot.get_chat_history())
-
-@app.route("/ask", methods=["POST"])
-def ask():
-    question = request.form["question"]
-    response = chatbot.ask(question)
-    return jsonify({"response": response, "chat_history": chatbot.get_chat_history()})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8085, debug=True)
+    except Exception as e:
+        await cl.Message(content=f"❌ Une erreur est survenue : {e}").send()
