@@ -1,14 +1,8 @@
-# Welcome to Chainlit! 🚀🤖
+# 🌍 Bienvenue sur votre assistant dédié à la naturalisation française ! (🇫🇷)
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+Ce service vous permet de poser toutes vos questions relatives à la **demande de naturalisation française**.  
+Nous sommes là pour vous accompagner tout au long de votre démarche et vous fournir les informations nécessaires à chaque étape du processus.
 
-## Useful Links 🔗
+🔗 Un lien vers le site officiel du Ministère de l'Intérieur est également disponible pour **démarrer votre demande en ligne**.
 
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
-
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
-
-## Welcome screen
-
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+📝 N'hésitez pas à poser vos questions, nous sommes là pour vous aider !

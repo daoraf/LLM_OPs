@@ -63,10 +63,5 @@ banner = """
 </div>
 """
 
-
-
-[server]
-port = 8500
-
 [meta]
 generated_by = "2.4.400"
