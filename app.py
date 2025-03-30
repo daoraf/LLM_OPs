@@ -18,7 +18,16 @@ conversation_history = [
 
 @cl.on_chat_start
 async def start():
-    await cl.Message(content="🇫🇷 Bonjour ! Je suis votre assistant IA pour la naturalisation française. Tapez `guide` pour un parcours étape par étape, ou posez votre question librement.").send()
+    await cl.Message(content="""
+🎉 **Bienvenue dans l'Assistant de Naturalisation Française 🇫🇷**
+
+Je suis là pour vous guider à chaque étape du processus :
+- Vérification des conditions
+- Constitution du dossier
+- Dépôt de la demande
+
+Tapez `guide` pour démarrer un parcours étape par étape, ou posez une question librement !
+""").send()
 
 @cl.on_message
 async def handle_message(message: cl.Message):

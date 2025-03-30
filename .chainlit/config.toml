@@ -32,6 +32,8 @@ allowed_executables = [ "npx", "uvx" ]
 [UI]
 name = "Assistant"
 cot = "full"
+custom_css = "public/custom.css"
+theme = "light"
 
 [[UI.header_links]]
 name = "Service Public"
@@ -44,7 +46,7 @@ banner = """
 <div style='
     background: white;
     border-bottom: 4px solid #0055A4;
-    padding: 10px 20px;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -52,14 +54,15 @@ banner = """
     font-size: 16px;
     font-weight: 600;
     color: #001F3F;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 '>
     <div style="display: flex; align-items: center; gap: 12px;">
-        <img src="https://upload.wikimedia.org/wikipedia/fr/thumb/e/e2/Logo_Minist%C3%A8re_de_l%27Int%C3%A9rieur_%28France%29.svg/1200px-Logo_Minist%C3%A8re_de_l%27Int%C3%A9rieur_%28France%29.svg.png" alt="Ministère de l'intérieur" height="48" />
-        <span>Assistant Naturalisation — Ministère de l'Intérieur 🇫🇷</span>
+        <img src="https://upload.wikimedia.org/wikipedia/fr/thumb/e/e2/Logo_Minist%C3%A8re_de_l%27Int%C3%A9rieur_%28France%29.svg/1200px-Logo_Minist%C3%A8re_de_l%27Int%C3%A9rieur_%28France%29.svg.png" alt="Ministère de l'intérieur" height="40" />
+        <span>Assistant Naturalisation – Ministère de l'Intérieur 🇫🇷</span>
     </div>
 </div>
 """
+
 
 
 [server]
