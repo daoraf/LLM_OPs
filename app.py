@@ -6,6 +6,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+
 # Charger la clé API
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -152,13 +153,60 @@ async def handle_message(message: cl.Message):
         conversation_history.clear()
         await cl.Message(content="♻️ Conversation réinitialisée. Posez votre question !").send()
         return
+    elif user_input.lower() == "mémoire":
+        await show_bot_memory()
+        return
 
     try:
+        # Réponse principale
         result = qa_chain.invoke({"query": user_input})
         await cl.Message(content=result["result"]).send()
 
+        # --- Analyse de la mémoire à apprendre ---
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=OPENAI_API_KEY)
+        analysis_prompt = f"""
+Tu es un assistant spécialisé en naturalisation française.
+
+Analyse ce message utilisateur :
+\"{user_input}\"
+
+- S'il contient une information factuelle utile, résume-la clairement en une phrase.
+- Sinon, réponds uniquement "NON".
+"""
+        analysis = llm.predict(analysis_prompt).strip()
+        print(f"🧠 Analyse du message : {analysis}")
+
+        if analysis.upper() != "NON":
+            embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+            vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
+            vectordb.add_texts([analysis])
+            vectordb.save_local("vectorstore")
+            print(f"📌 Nouvelle mémoire ajoutée : {analysis}")
+        import os
+        print("📁 Chemin absolu du vectorstore :", os.path.abspath("vectorstore"))
+
     except Exception as e:
         await cl.Message(content=f"❌ Erreur : {e}").send()
+
+async def show_bot_memory():
+    try:
+        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+        vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
+        all_memory = list(vectordb.docstore._dict.values())
+
+        if not all_memory:
+            await cl.Message(content="🤔 Le bot n’a encore rien appris.").send()
+            return
+
+        memory_texts = [f"{i+1} - {doc.page_content}" for i, doc in enumerate(all_memory)]
+        full_memory = "**🧠 Mémoires apprises par le bot :**\n\n" + "\n".join(memory_texts)
+        full_memory += "\n\n✏️ Pour supprimer une mémoire, tapez par exemple : `supprime 2`"
+
+        await cl.Message(content=full_memory[:4000]).send()
+
+    except Exception as e:
+        await cl.Message(content=f"❌ Erreur lors de l'affichage de la mémoire : {e}").send()
+
 
 async def launch_step_by_step_guide(lang="fr"):
     await cl.Message(content=t(lang, "guide_title")).send()
@@ -171,3 +219,19 @@ async def send_checklist(lang="fr"):
 
 async def send_depot_info(lang="fr"):
     await cl.Message(content=t(lang, "depot")).send()
+
+async def handle_user_command(cmd: str, lang: str = "fr"):
+    cmd = cmd.lower()
+    if cmd == "guide":
+        await launch_step_by_step_guide(lang)
+    elif cmd == "checklist":
+        await send_checklist(lang)
+    elif cmd == "dépôt":
+        await send_depot_info(lang)
+    elif cmd == "mémoire":
+        await show_bot_memory()
+
+
+@cl.action_callback
+async def on_action(action: cl.Action):
+    await handle_user_command(action.value, "fr")
