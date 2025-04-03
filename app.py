@@ -10,36 +10,6 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-@cl.on_file
-async def handle_file(file: cl.UploadedFile):
-    try:
-        if not file.name.endswith(".pdf"):
-            await cl.Message(content="❌ Seuls les fichiers PDF sont supportés pour le moment.").send()
-            return
-
-        # Lecture du contenu du fichier PDF
-        pdf_reader = PdfReader(file.path)
-        text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
-
-        if not text.strip():
-            await cl.Message(content="❌ Aucun texte lisible trouvé dans ce PDF.").send()
-            return
-
-        # Ajouter à la base vectorielle
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-        vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
-
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        text_with_meta = f"[{timestamp}] Contenu du document « {file.name} » :\n{text}"
-
-        vectordb.add_texts([text_with_meta])
-        vectordb.save_local("vectorstore")
-
-        await cl.Message(content=f"📄 Le document **{file.name}** a été ajouté à la mémoire. Posez vos questions à son sujet !").send()
-
-    except Exception as e:
-        await cl.Message(content=f"❌ Erreur lors du traitement du fichier : {e}").send()
-
 
 
 # Charger la clé API
@@ -168,11 +138,10 @@ def t(lang, key):
 async def start():
     msg = (
         translations["fr"]["welcome"] +
-        "\n\n💡 Tapez `guide`, `checklist`, ou `dépôt` à tout moment pour être guidé." +
-        "\n📎 Vous pouvez aussi **téléverser un document PDF** (ex: questionnaire, justificatif) pour que je le lise."
+        "\n\n💡 Tapez `guide`, `checklist`, ou `dépôt` pour démarrer." +
+        "\n📎 Vous pouvez **envoyer un document PDF à tout moment** en tapant `/upload`."
     )
     await cl.Message(content=msg).send()
-
 @cl.on_message
 async def handle_message(message: cl.Message):
     global conversation_history
@@ -194,6 +163,9 @@ async def handle_message(message: cl.Message):
         return
     elif user_input.lower() == "mémoire":
         await show_bot_memory()
+        return
+    elif user_input.lower() == "/upload":
+        await ask_for_pdf_files()
         return
 
     try:
@@ -302,45 +274,54 @@ async def handle_user_command(cmd: str, lang: str = "fr"):
         await show_bot_memory()
 
 
+
+
 @cl.action_callback
 async def on_action(action: cl.Action):
     await handle_user_command(action.value, "fr")
 
 
-@cl.on_file
-async def handle_file(file: cl.UploadedFile):
-    try:
-        if not file.name.endswith(".pdf"):
-            await cl.Message(content="❌ Seuls les fichiers PDF sont supportés pour le moment.").send()
-            return
+async def ask_for_pdf_files():
+    files = await cl.AskFileMessage(
+        content="📂 Envoie jusqu’à 3 fichiers PDF (questionnaire, justificatifs, etc.) pour que je les intègre.",
+        accept=["application/pdf"],
+        max_size_mb=10,
+        max_files=3
+    ).send()
 
-        # Lire le texte du PDF
-        pdf_reader = PdfReader(file.path)
-        text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+    if not files:
+        await cl.Message(content="⛔ Aucun fichier reçu. Vous pouvez réessayer plus tard avec `/upload`.").send()
+        return
 
-        if not text.strip():
-            await cl.Message(content="❌ Aucun texte lisible trouvé dans ce PDF.").send()
-            return
+    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
 
-        # Découper le texte en petits morceaux intelligents
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,       # max chars par chunk
-            chunk_overlap=100,    # chevauchement pour contexte
-            separators=["\n\n", "\n", ".", " "]  # ordre des séparateurs
-        )
-        chunks = splitter.split_text(text)
+    total_chunks = 0
+    for uploaded_file in files:
+        try:
+            pdf_reader = PdfReader(uploaded_file.path)
+            text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+            if not text.strip():
+                await cl.Message(content=f"⚠️ Aucun texte lisible trouvé dans **{uploaded_file.name}**.").send()
+                continue
 
-        # Ajouter les chunks à FAISS
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-        vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=800,
+                chunk_overlap=100,
+                separators=["\n\n", "\n", ".", " "]
+            )
+            chunks = splitter.split_text(text)
+            total_chunks += len(chunks)
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        chunked_with_metadata = [f"[{timestamp}] (Doc: {file.name}) {chunk}" for chunk in chunks]
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            docs = [f"[{timestamp}] (Doc: {uploaded_file.name}) {chunk}" for chunk in chunks]
 
-        vectordb.add_texts(chunked_with_metadata)
-        vectordb.save_local("vectorstore")
+            vectordb.add_texts(docs)
+            await cl.Message(content=f"✅ Fichier **{uploaded_file.name}** intégré ({len(chunks)} morceaux).").send()
 
-        await cl.Message(content=f"✅ Le document **{file.name}** a été découpé en {len(chunks)} parties et ajouté à la mémoire. Posez vos questions !").send()
+        except Exception as e:
+            await cl.Message(content=f"❌ Erreur pour **{uploaded_file.name}** : {e}").send()
 
-    except Exception as e:
-        await cl.Message(content=f"❌ Erreur lors du traitement du fichier : {e}").send()
+    vectordb.save_local("vectorstore")
+    if total_chunks > 0:
+        await cl.Message(content="📚 Tous les fichiers ont été intégrés. Tu peux poser tes questions maintenant !").send()
