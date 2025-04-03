@@ -1,10 +1,45 @@
 import os
 import chainlit as cl
+import re
+from datetime import datetime
 from dotenv import load_dotenv
 from langdetect import detect
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from PyPDF2 import PdfReader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+@cl.on_file
+async def handle_file(file: cl.UploadedFile):
+    try:
+        if not file.name.endswith(".pdf"):
+            await cl.Message(content="❌ Seuls les fichiers PDF sont supportés pour le moment.").send()
+            return
+
+        # Lecture du contenu du fichier PDF
+        pdf_reader = PdfReader(file.path)
+        text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+
+        if not text.strip():
+            await cl.Message(content="❌ Aucun texte lisible trouvé dans ce PDF.").send()
+            return
+
+        # Ajouter à la base vectorielle
+        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+        vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        text_with_meta = f"[{timestamp}] Contenu du document « {file.name} » :\n{text}"
+
+        vectordb.add_texts([text_with_meta])
+        vectordb.save_local("vectorstore")
+
+        await cl.Message(content=f"📄 Le document **{file.name}** a été ajouté à la mémoire. Posez vos questions à son sujet !").send()
+
+    except Exception as e:
+        await cl.Message(content=f"❌ Erreur lors du traitement du fichier : {e}").send()
+
 
 
 # Charger la clé API
@@ -19,7 +54,7 @@ def load_vectorstore(path: str):
 def create_qa_chain(vectorstore_path: str):
     db = load_vectorstore(vectorstore_path)
     retriever = db.as_retriever()
-    llm = ChatOpenAI(model="gpt-4", temperature=0.3, openai_api_key=OPENAI_API_KEY)
+    llm = ChatOpenAI(model="gpt-4", temperature=0, openai_api_key=OPENAI_API_KEY)
     return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
 qa_chain = create_qa_chain("vectorstore")
@@ -131,7 +166,11 @@ def t(lang, key):
 
 @cl.on_chat_start
 async def start():
-    msg = translations["fr"]["welcome"] + "\n\n💡 Tapez `guide`, `checklist`, ou `dépôt` à tout moment pour être guidé."
+    msg = (
+        translations["fr"]["welcome"] +
+        "\n\n💡 Tapez `guide`, `checklist`, ou `dépôt` à tout moment pour être guidé." +
+        "\n📎 Vous pouvez aussi **téléverser un document PDF** (ex: questionnaire, justificatif) pour que je le lise."
+    )
     await cl.Message(content=msg).send()
 
 @cl.on_message
@@ -179,10 +218,15 @@ Analyse ce message utilisateur :
         if analysis.upper() != "NON":
             embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
             vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
-            vectordb.add_texts([analysis])
+
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            text_with_timestamp = f"[{timestamp}] {analysis}"
+
+            vectordb.add_texts([text_with_timestamp])
             vectordb.save_local("vectorstore")
-            print(f"📌 Nouvelle mémoire ajoutée : {analysis}")
-        import os
+
+            print(f"📌 Nouvelle mémoire ajoutée : {text_with_timestamp}")
+
         print("📁 Chemin absolu du vectorstore :", os.path.abspath("vectorstore"))
 
     except Exception as e:
@@ -198,15 +242,41 @@ async def show_bot_memory():
             await cl.Message(content="🤔 Le bot n’a encore rien appris.").send()
             return
 
-        memory_texts = [f"{i+1} - {doc.page_content}" for i, doc in enumerate(all_memory)]
-        full_memory = "**🧠 Mémoires apprises par le bot :**\n\n" + "\n".join(memory_texts)
-        full_memory += "\n\n✏️ Pour supprimer une mémoire, tapez par exemple : `supprime 2`"
+        # Séparer les mémoires avec timestamp
+        new_memories = []
+        old_memories = []
 
-        await cl.Message(content=full_memory[:4000]).send()
+        for i, doc in enumerate(all_memory):
+            content = doc.page_content.strip()
+            match = re.match(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]", content)
+            if match:
+                dt = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S")
+                new_memories.append((dt, i, content))
+            else:
+                old_memories.append((i, content))
+
+        # Trier les nouvelles mémoires du plus récent au plus ancien
+        new_memories.sort(reverse=True)
+
+        message_parts = []
+
+        if new_memories:
+            message_parts.append("**🆕 Dernières infos apprises par le bot :**\n")
+            for dt, i, content in new_memories:
+                message_parts.append(f"{i + 1} - {content}")
+        else:
+            message_parts.append("ℹ️ Aucune nouvelle information mémorisée par conversation.")
+
+        if old_memories:
+            message_parts.append("\n\n**📚 Contenus préchargés (documents) :**\n")
+            for i, content in old_memories[:5]:  # limite d’affichage pour éviter surcharge
+                message_parts.append(f"{i + 1} - {content[:200]}...")
+
+        full_output = "\n".join(message_parts)
+        await cl.Message(content=full_output[:4000]).send()
 
     except Exception as e:
         await cl.Message(content=f"❌ Erreur lors de l'affichage de la mémoire : {e}").send()
-
 
 async def launch_step_by_step_guide(lang="fr"):
     await cl.Message(content=t(lang, "guide_title")).send()
@@ -235,3 +305,42 @@ async def handle_user_command(cmd: str, lang: str = "fr"):
 @cl.action_callback
 async def on_action(action: cl.Action):
     await handle_user_command(action.value, "fr")
+
+
+@cl.on_file
+async def handle_file(file: cl.UploadedFile):
+    try:
+        if not file.name.endswith(".pdf"):
+            await cl.Message(content="❌ Seuls les fichiers PDF sont supportés pour le moment.").send()
+            return
+
+        # Lire le texte du PDF
+        pdf_reader = PdfReader(file.path)
+        text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
+
+        if not text.strip():
+            await cl.Message(content="❌ Aucun texte lisible trouvé dans ce PDF.").send()
+            return
+
+        # Découper le texte en petits morceaux intelligents
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800,       # max chars par chunk
+            chunk_overlap=100,    # chevauchement pour contexte
+            separators=["\n\n", "\n", ".", " "]  # ordre des séparateurs
+        )
+        chunks = splitter.split_text(text)
+
+        # Ajouter les chunks à FAISS
+        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+        vectordb = FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        chunked_with_metadata = [f"[{timestamp}] (Doc: {file.name}) {chunk}" for chunk in chunks]
+
+        vectordb.add_texts(chunked_with_metadata)
+        vectordb.save_local("vectorstore")
+
+        await cl.Message(content=f"✅ Le document **{file.name}** a été découpé en {len(chunks)} parties et ajouté à la mémoire. Posez vos questions !").send()
+
+    except Exception as e:
+        await cl.Message(content=f"❌ Erreur lors du traitement du fichier : {e}").send()
